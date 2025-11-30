@@ -1,7 +1,7 @@
 import { component$ } from "@builder.io/qwik";
 import { isDev } from "@builder.io/qwik";
 import { QwikCityProvider, RouterOutlet } from "@builder.io/qwik-city";
-import { RouterHead } from "./components/router-head/router-head";
+import { RouterHead } from "./components/shared/router-head/router-head";
 
 import "./global.css";
 
