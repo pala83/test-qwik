@@ -1,26 +1,22 @@
-import { $, component$, useSignal } from "@builder.io/qwik";
+import { $, component$ } from "@builder.io/qwik";
 import { useNavigate, type DocumentHead } from "@builder.io/qwik-city";
 import { PokemonImage } from "~/components/shared/pokemons/pokemonImage";
+import { usePokemonGame } from "~/hooks/use-pokemon-game";
 
 export default component$(() => {
-  const pokemonId = useSignal<number>(1); // para datos primitivos booleanos, strings, numbers
-  const showBack = useSignal<boolean>(false); // useStore() para datos complejos
-
-  const changePokemonId = $((value: number) => {
-    if (pokemonId.value + value <= 0) return;
-    pokemonId.value += value;
-  });
-
   const nav = useNavigate();
-  const goToPokemon = $(() => {
-    nav(`/pokemon/${pokemonId.value}/`);
+
+  const goToPokemon = $((id: number) => {
+    nav(`/pokemon/${id}/`);
   });
+
+  const { pokemonId, showBack, nextPokemon, previousPokemon, toggleFromBack } = usePokemonGame();
 
   return (
     <>
       <span class="text-lg font-bold">Buscador simple</span>
-      <span class="text-5xl">{pokemonId}</span>
-      <div onClick$={goToPokemon} style="cursor: pointer;">
+      <span class="text-5xl">{pokemonId.value}</span>
+      <div onClick$={() => goToPokemon(pokemonId.value)} style="cursor: pointer;">
         <PokemonImage
           pokemonId={pokemonId.value}
           isBack={showBack.value}
@@ -30,17 +26,17 @@ export default component$(() => {
 
       <div class="mt-2 space-x-3">
         <button
-          onClick$={() => changePokemonId(-1)}
+          onClick$={previousPokemon}
           disabled={pokemonId.value <= 1}
           class="btn btn-primary"
         >
           Anterior
         </button>
-        <button onClick$={() => changePokemonId(1)} class="btn btn-primary">
+        <button onClick$={nextPokemon} class="btn btn-primary">
           Siguiente
         </button>
         <button
-          onClick$={() => (showBack.value = !showBack.value)}
+          onClick$={toggleFromBack}
           class="btn btn-primary"
         >
           Voltear

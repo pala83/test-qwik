@@ -1,6 +1,7 @@
 import { component$ } from "@builder.io/qwik";
 import { routeLoader$ } from "@builder.io/qwik-city";
 import { PokemonImage } from "~/components/shared/pokemons/pokemonImage";
+import { usePokemonGame } from "~/hooks/use-pokemon-game";
 
 export const usePokemonId = routeLoader$<number>(({ params, redirect }) => {
   const id = Number(params.id);
@@ -12,11 +13,19 @@ export const usePokemonId = routeLoader$<number>(({ params, redirect }) => {
 
 export default component$(() => {
   const location = usePokemonId();
+  const { showBack, toggleFromBack } = usePokemonGame();
 
   return (
     <>
       <span class="text-lg font-bold">Pokemon ID {location}</span>
-      <PokemonImage pokemonId={location.value} size={200} />
+      <PokemonImage
+        pokemonId={location.value}
+        isBack={showBack.value}
+        size={200}
+      />
+      <div>
+        <button onClick$={toggleFromBack} class="btn btn-primary">voltear</button>
+      </div>
     </>
   );
 });

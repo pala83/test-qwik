@@ -1,4 +1,9 @@
-import { component$, useComputed$, useSignal, useTask$ } from "@builder.io/qwik";
+import {
+  component$,
+  useComputed$,
+  useSignal,
+  useTask$,
+} from "@builder.io/qwik";
 
 interface PokemonImageProps {
   pokemonId: number;
@@ -16,7 +21,7 @@ export const PokemonImage = component$(
 
     const imageUrl = useComputed$<string>(() => {
       return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${isBack ? "back/" : ""}${pokemonId}.png`;
-    })
+    });
 
     return (
       <div
