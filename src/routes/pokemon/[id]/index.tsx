@@ -1,6 +1,7 @@
 import { component$ } from "@builder.io/qwik";
 import { routeLoader$ } from "@builder.io/qwik-city";
 import { PokemonImage } from "~/components/shared/pokemons/pokemonImage";
+import { Button } from "~/components/ui";
 import { usePokemonGame } from "~/hooks/use-pokemon-game";
 
 export const usePokemonId = routeLoader$<number>(({ params, redirect }) => {
@@ -24,9 +25,9 @@ export default component$(() => {
         size={200}
       />
       <div>
-        <button onClick$={toggleFromBack} class="btn btn-primary">
+        <Button onClick$={toggleFromBack} class="btn btn-primary">
           voltear
-        </button>
+        </Button>
       </div>
     </>
   );

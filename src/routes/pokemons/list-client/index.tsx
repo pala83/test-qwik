@@ -7,6 +7,7 @@ import {
 } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
 import { PokemonImage } from "~/components/shared/pokemons/pokemonImage";
+import { Button } from "~/components/ui";
 import { PokemonListContext } from "~/context";
 import { getSmallPokemons } from "~/helpers/get-pokemons";
 
@@ -48,12 +49,12 @@ export default component$(() => {
         <span>Está cargando página: </span>
       </div>
       <div class="mt-10">
-        <button
+        <Button
           onClick$={() => changePokemonId(1)}
           class="btn btn-primary mr-2"
         >
           Siguientes
-        </button>
+        </Button>
       </div>
 
       <div class="mt-5 grid sm:grid-cols-2 md:grid-cols-5 xl:grid-cols-7">

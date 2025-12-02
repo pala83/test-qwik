@@ -14,26 +14,26 @@ export default component$(() => {
             <QwikLogo height={50} width={143} />
           </Link>
         </div>
-        <ul class="flex list-none gap-3">
-          <li>
-            <Button>
-              <Link href="/counter">CounterHook</Link>
-            </Button>
-          </li>
-
-          <li>
-            <Button>
-              <Link href="/pokemons/list-ssr/">SSR</Link>
-            </Button>
-          </li>
-
-          <li>
-            <Button>
-              <Link href="/pokemons/list-client/">Client</Link>
-            </Button>
-          </li>
+        <ul class="flex list-none gap-3 px-5">
           <li>
             <ToggleTheme />
+          </li>
+          <li>
+            <Link href="/counter">
+              <Button>CounterHook</Button>
+            </Link>
+          </li>
+
+          <li>
+            <Link href="/pokemons/list-ssr/">
+              <Button>SSR</Button>
+            </Link>
+          </li>
+
+          <li>
+            <Link href="/pokemons/list-client/">
+              <Button>Client</Button>
+            </Link>
           </li>
         </ul>
       </div>
