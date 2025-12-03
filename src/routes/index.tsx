@@ -1,58 +1,100 @@
-import { $, component$ } from "@builder.io/qwik";
-import { useNavigate, type DocumentHead } from "@builder.io/qwik-city";
-import { PokemonImage } from "~/components/shared/pokemons/pokemonImage";
-import { Button } from "~/components/ui";
-import { usePokemonGame } from "~/hooks/use-pokemon-game";
+import { component$, useSignal, $ } from "@builder.io/qwik";
+import { Button, Input } from "~/components/ui";
+import type { DocumentHead } from "@builder.io/qwik-city";
+import { useNavigate } from "@builder.io/qwik-city";
 
 export default component$(() => {
   const nav = useNavigate();
+  const email = useSignal("");
 
-  const goToPokemon = $((id: number) => {
-    nav(`/pokemon/${id}/`);
+  const handleSearch = $(() => {
+    if (email.value) {
+      // Redirigimos a la ruta de reserva con el email ingresado
+      nav(`/reservar_turno/${email.value}`);
+    }
   });
-
-  const { pokemonId, showBack, nextPokemon, previousPokemon, toggleFromBack } =
-    usePokemonGame();
 
   return (
     <>
-      <span class="text-lg font-bold">Buscador simple</span>
-      <span class="text-5xl">{pokemonId.value}</span>
-      <div
-        onClick$={() => goToPokemon(pokemonId.value)}
-        style="cursor: pointer;"
-      >
-        <PokemonImage
-          pokemonId={pokemonId.value}
-          isBack={showBack.value}
-          size={200}
-        />
+      <div class="flex flex-wrap justify-start gap-4 p-10">
+        <span class="text-lg font-bold">Buscador simple</span>
+        <div class="flex w-full max-w-sm items-center space-x-2">
+          <Input
+            id="search"
+            class="rounded-l-sm"
+            type="email"
+            placeholder="ejemplo@gmail.com"
+            bind:value={email}
+            onKeyDown$={(e) => e.key === "Enter" && handleSearch()}
+          />
+          <Button
+            class="rounded-l-none"
+            type="submit"
+            look={"primary"}
+            onClick$={handleSearch}
+          >
+            Buscar
+          </Button>
+        </div>
       </div>
-      <div class="mt-2 space-x-3">
-        <Button
-          look="primary"
-          onClick$={previousPokemon}
-          disabled={pokemonId.value <= 1}
-        >
-          Anterior
-        </Button>
-        <Button look="primary" onClick$={nextPokemon}>
-          Siguiente
-        </Button>
-        <Button look="primary" onClick$={toggleFromBack}>
-          Voltear
-        </Button>
-      </div>
+      {/*
+      
+    <div class="container p-10">
+      <h1>Bienvenido a la App de Turnos</h1>
+
+      {session.value?.user ? (
+        <div class="user-info rounded border bg-green-50 p-4">
+          <h2>¡Hola, {session.value.user.name}!</h2>
+          <p>Estás logueado como: {session.value.user.email}</p>
+
+          <div class="mt-4">
+            <img
+              src={session.value.user.image || ""}
+              alt="Avatar"
+              class="h-16 w-16 rounded-full"
+            />
+          </div>
+
+          <div class="mt-6">
+            <Button
+              look={"alert"}
+              onClick$={() => signOut.submit({ redirectTo: "/" })} // <--- Cambia callbackUrl por redirectTo
+            >
+              Cerrar Sesión
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div class="login-area rounded border bg-gray-50 p-4">
+          <p>Debes iniciar sesión para gestionar o reservar turnos.</p>
+
+          <div class="mt-4">
+            <Button
+              look={"primary"}
+              onClick$={() =>
+                signIn.submit({
+                  providerId: "google",
+                })
+              }
+            >
+              Iniciar sesión con Google
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+      */}
     </>
   );
 });
 
 export const head: DocumentHead = {
-  title: "Welcome to Qwik",
+  title: "Turnero",
   meta: [
     {
-      name: "description",
-      content: "Qwik site description",
+      name: "Pagina principal",
+      content:
+        "Desde aqui se puede buscar una agenda por email o acceder a tu propia agenda",
     },
   ],
 };
