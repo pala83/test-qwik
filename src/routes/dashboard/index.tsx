@@ -6,60 +6,57 @@ import {
   Form,
   zod$,
 } from "@builder.io/qwik-city";
-import { google } from "googleapis";
-import { getOauthClient } from "~/helpers/google-auth";
+import { getCalendarEvents, createCalendarEvent } from "~/helpers/calendar";
 
 // 1. Loader para LEER eventos (Server-Side)
-export const useCalendarEvents = routeLoader$(async ({ cookie, redirect }) => {
-  const refreshToken = cookie.get("g_refresh_token")?.value;
+export const useCalendarEvents = routeLoader$(async (requestEvent) => {
+  const session = requestEvent.sharedMap.get("session") as any;
+  const accessToken = session?.accessToken;
 
-  if (!refreshToken) {
-    throw redirect(302, "/login");
+  if (!accessToken) {
+    throw requestEvent.redirect(302, "/");
   }
-
-  const auth = getOauthClient();
-  auth.setCredentials({ refresh_token: refreshToken });
-
-  const calendar = google.calendar({ version: "v3", auth });
 
   // Calculamos rango: Hoy hasta 1 mes
   const now = new Date();
   const nextMonth = new Date();
   nextMonth.setMonth(now.getMonth() + 1);
 
-  const response = await calendar.events.list({
-    calendarId: "primary",
-    timeMin: now.toISOString(),
-    timeMax: nextMonth.toISOString(),
-    singleEvents: true,
-    orderBy: "startTime",
-  });
-
-  return response.data.items || [];
+  try {
+    const data = await getCalendarEvents(
+      "primary",
+      accessToken,
+      "", // API Key no necesaria si tenemos token
+      now.toISOString(),
+      nextMonth.toISOString(),
+    );
+    return data.items || [];
+  } catch (error) {
+    console.error("Error loading events", error);
+    return [];
+  }
 });
 
 // 2. Action para CREAR un turno (Server-Side)
 export const useCreateBooking = routeAction$(
-  async (data, { cookie }) => {
-    const refreshToken = cookie.get("g_refresh_token")?.value;
-    if (!refreshToken) return { success: false, error: "No autorizado" };
+  async (data, requestEvent) => {
+    const session = requestEvent.sharedMap.get("session") as any;
+    const accessToken = session?.accessToken;
 
-    const auth = getOauthClient();
-    auth.setCredentials({ refresh_token: refreshToken });
-    const calendar = google.calendar({ version: "v3", auth });
+    if (!accessToken) return { success: false, error: "No autorizado" };
 
-    // Crear evento
-    await calendar.events.insert({
-      calendarId: "primary",
-      requestBody: {
+    try {
+      await createCalendarEvent(accessToken, {
         summary: `Turno: ${data.clientName}`,
         description: `Servicio para ${data.clientEmail}`,
-        start: { dateTime: data.startTime }, // Formato ISO
-        end: { dateTime: data.endTime }, // Formato ISO
-      },
-    });
-
-    return { success: true };
+        start: { dateTime: data.startTime },
+        end: { dateTime: data.endTime },
+      });
+      return { success: true };
+    } catch (error) {
+      console.error("Error creating booking", error);
+      return { success: false, error: "Error al crear turno" };
+    }
   },
   zod$({
     clientName: z.string(),
