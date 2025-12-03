@@ -1,16 +1,6 @@
 import { QwikAuth$ } from "@auth/qwik";
 import Google from "@auth/qwik/providers/google";
 
-console.log("--- DEBUG AUTH ---");
-console.log("Client ID:", import.meta.env.GOOGLE_CLIENT_ID);
-console.log(
-  "Secret:",
-  import.meta.env.GOOGLE_CLIENT_SECRET
-    ? "SI (Oculto)"
-    : "NO ESTÁ LEYENDO EL SECRETO",
-);
-console.log("--------------------");
-
 export const { onRequest, useSession, useSignIn, useSignOut } = QwikAuth$(
   ({ env }) => ({
     secret: env.get("AUTH_SECRET"),

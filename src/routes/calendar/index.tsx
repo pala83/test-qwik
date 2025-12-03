@@ -25,6 +25,8 @@ export default component$(() => {
               src={session.value.user.image || ""}
               alt="Avatar"
               class="h-16 w-16 rounded-full"
+              width={64}
+              height={64}
             />
           </div>
 
