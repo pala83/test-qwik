@@ -1,7 +1,8 @@
-import { component$ } from "@builder.io/qwik";
+import { component$, useVisibleTask$ } from "@builder.io/qwik";
 import { isDev } from "@builder.io/qwik";
 import { QwikCityProvider, RouterOutlet } from "@builder.io/qwik-city";
 import { RouterHead } from "./components/shared/router-head/router-head";
+import { inject } from "@vercel/analytics";
 
 import "./global.css";
 
@@ -13,10 +14,22 @@ export default component$(() => {
    * Don't remove the `<head>` and `<body>` elements.
    */
 
+  // Inyectar Vercel Analytics solo en el cliente y en producción
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(
+    () => {
+      if (!isDev) {
+        inject();
+      }
+    },
+    { strategy: "document-idle" },
+  );
+
   return (
     <QwikCityProvider>
       <head>
         <meta charset="utf-8" />
+
         {/* Script bloqueante para evitar parpadeo de tema - debe ejecutarse antes del render */}
         <script
           dangerouslySetInnerHTML={`

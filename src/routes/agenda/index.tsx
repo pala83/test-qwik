@@ -620,7 +620,7 @@ export default component$(() => {
               >
                 {Array.from({ length: 24 }, (_, i) => (
                   <option key={i} value={i}>
-                    {i.toString().padStart(2, "0")}:00
+                    {i.toString().padStart(2, "0") + ":00"}
                   </option>
                 ))}
               </select>
@@ -644,7 +644,7 @@ export default component$(() => {
               >
                 {Array.from({ length: 24 }, (_, i) => (
                   <option key={i} value={i}>
-                    {i.toString().padStart(2, "0")}:00
+                    {i.toString().padStart(2, "0") + ":00"}
                   </option>
                 ))}
               </select>
@@ -665,6 +665,7 @@ export default component$(() => {
                       breakEndHour: 14,
                     };
                   } else {
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
                     const { breakStartHour, breakEndHour, ...rest } =
                       scheduleConfig.value;
                     scheduleConfig.value = rest as AppointmentScheduleConfig;
@@ -703,7 +704,7 @@ export default component$(() => {
                   >
                     {Array.from({ length: 24 }, (_, i) => (
                       <option key={i} value={i}>
-                        {i.toString().padStart(2, "0")}:00
+                        {i.toString().padStart(2, "0") + ":00"}
                       </option>
                     ))}
                   </select>
@@ -731,7 +732,7 @@ export default component$(() => {
                   >
                     {Array.from({ length: 24 }, (_, i) => (
                       <option key={i} value={i}>
-                        {i.toString().padStart(2, "0")}:00
+                        {i.toString().padStart(2, "0") + ":00"}
                       </option>
                     ))}
                   </select>
