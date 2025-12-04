@@ -52,7 +52,7 @@ export const ToggleTheme = component$(() => {
 
   return (
     <Dropdown.Root>
-      <Dropdown.Trigger>
+      <Dropdown.Trigger look={"ghost"}>
         {themeSelected.value === ThemeOption.DARK && <LuMoon />}
         {themeSelected.value === ThemeOption.LIGHT && <LuSun />}
         {themeSelected.value === ThemeOption.SYSTEM && <LuMonitor />}

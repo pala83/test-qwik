@@ -1,174 +1,366 @@
-import { component$ } from "@builder.io/qwik";
+import { $, component$, useSignal } from "@builder.io/qwik";
+import { routeLoader$, server$ } from "@builder.io/qwik-city";
+import { Button } from "~/components/ui";
 import {
-  routeLoader$,
-  routeAction$,
-  Form,
-  useLocation,
-} from "@builder.io/qwik-city";
-import { getCalendarEvents, createCalendarEvent } from "~/helpers/calendar";
+  getCalendarEvents,
+  generateAvailableSlots,
+  createAppointmentInOwnerCalendar,
+  type AppointmentSlot,
+  type AppointmentScheduleConfig,
+} from "~/helpers/calendar";
 
-// Loader to get events
-export const useCalendarEvents = routeLoader$(async (requestEvent) => {
+// Configuración por defecto (idealmente vendría de la base de datos del propietario)
+const DEFAULT_SCHEDULE_CONFIG: AppointmentScheduleConfig = {
+  slotDurationMinutes: 30,
+  availableDays: [1, 2, 3, 4, 5], // Lunes a Viernes
+  startHour: 9,
+  endHour: 18,
+  breakStartHour: 13,
+  breakEndHour: 14,
+};
+
+// Loader para obtener los slots disponibles del calendario
+export const useCalendarSlots = routeLoader$(async (requestEvent) => {
   const calendarId = requestEvent.params.id;
-  const session = requestEvent.sharedMap.get("session") as any;
-  const accessToken = session?.accessToken;
+  const session = requestEvent.sharedMap.get("session") as {
+    accessToken?: string;
+    user?: { email?: string; name?: string };
+  } | null;
   const apiKey = requestEvent.env.get("GOOGLE_API_KEY") || "";
 
-  // Range: Now to 1 month from now
+  // Range: Now to 2 weeks from now
   const now = new Date();
-  const oneMonthLater = new Date();
-  oneMonthLater.setMonth(now.getMonth() + 1);
+  const twoWeeksLater = new Date();
+  twoWeeksLater.setDate(now.getDate() + 14);
 
   try {
+    // Obtener eventos existentes del calendario
     const data = await getCalendarEvents(
       calendarId,
-      accessToken,
+      session?.accessToken,
       apiKey,
       now.toISOString(),
-      oneMonthLater.toISOString(),
+      twoWeeksLater.toISOString(),
     );
-    return { events: data.items || [], calendarId };
+
+    // Generar slots disponibles
+    const slots = generateAvailableSlots(
+      DEFAULT_SCHEDULE_CONFIG,
+      data.items || [],
+      14,
+    );
+
+    return {
+      slots,
+      calendarId,
+      error: null,
+      user: session?.user || null,
+      accessToken: session?.accessToken || null,
+    };
   } catch (e) {
     console.error(e);
     return {
-      events: [],
+      slots: [],
+      calendarId,
       error:
-        "No se pudieron cargar los eventos. Asegúrate de que el calendario sea público o esté compartido contigo.",
+        "No se pudieron cargar los horarios. Asegúrate de que el calendario sea público o esté compartido contigo.",
+      user: session?.user || null,
+      accessToken: session?.accessToken || null,
     };
   }
 });
 
-// Action to book
-export const useBookTurno = routeAction$(async (data, requestEvent) => {
-  const session = requestEvent.sharedMap.get("session") as any;
-  if (!session || !session.accessToken) {
-    return { success: false, message: "Debes iniciar sesión para reservar." };
-  }
-
-  const providerEmail = requestEvent.params.id;
-  const { start, end, summary } = data;
-
+// Server action para reservar un turno
+// NOTA: En producción, necesitarías almacenar el token del propietario de forma segura
+// Por ahora, el cliente logueado crea el evento en su propio calendario e invita al propietario
+const bookAppointmentAction = server$(async function (
+  calendarId: string,
+  slot: AppointmentSlot,
+  clientName: string,
+  clientEmail: string,
+  description: string,
+  accessToken: string,
+) {
   try {
-    await createCalendarEvent(session.accessToken, {
-      summary: summary as string,
-      start: { dateTime: start as string },
-      end: { dateTime: end as string },
-      attendees: [{ email: providerEmail }],
-    });
+    // Buscar el calendario del propietario para verificar que existe
+    // y crear la cita
+    const appointment = await createAppointmentInOwnerCalendar(
+      accessToken,
+      calendarId,
+      {
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        clientName,
+        clientEmail,
+        description,
+      },
+    );
+
     return {
       success: true,
-      message:
-        "Solicitud de turno enviada con éxito (se ha creado el evento en tu calendario e invitado al profesional).",
+      message: "¡Cita reservada con éxito! Recibirás una invitación por email.",
+      appointment,
     };
-  } catch (e) {
-    console.error(e);
-    return { success: false, message: "Error al reservar turno." };
+  } catch (error) {
+    console.error("Error booking appointment:", error);
+    return {
+      success: false,
+      message:
+        error instanceof Error ? error.message : "Error al reservar la cita",
+      appointment: null,
+    };
   }
 });
 
+// Agrupar slots por día para mejor visualización
+function groupSlotsByDay(
+  slots: AppointmentSlot[],
+): Map<string, AppointmentSlot[]> {
+  const grouped = new Map<string, AppointmentSlot[]>();
+
+  for (const slot of slots) {
+    const dateKey = new Date(slot.startTime).toLocaleDateString("es-ES", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    });
+
+    if (!grouped.has(dateKey)) {
+      grouped.set(dateKey, []);
+    }
+    grouped.get(dateKey)!.push(slot);
+  }
+
+  return grouped;
+}
+
 export default component$(() => {
-  const eventsSignal = useCalendarEvents();
-  const bookAction = useBookTurno();
-  const loc = useLocation();
+  const slotsData = useCalendarSlots();
+
+  const selectedSlot = useSignal<AppointmentSlot | null>(null);
+  const description = useSignal("");
+  const isBooking = useSignal(false);
+  const bookingResult = useSignal<{ success: boolean; message: string } | null>(
+    null,
+  );
+
+  // Solo mostrar slots disponibles
+  const availableSlots = slotsData.value.slots.filter((s) => s.available);
+  const slotsByDay = groupSlotsByDay(availableSlots);
+
+  const handleBookAppointment = $(async () => {
+    if (!selectedSlot.value) return;
+    if (!slotsData.value.user || !slotsData.value.accessToken) {
+      bookingResult.value = {
+        success: false,
+        message: "Debes iniciar sesión para reservar una cita.",
+      };
+      return;
+    }
+
+    isBooking.value = true;
+    bookingResult.value = null;
+
+    const result = await bookAppointmentAction(
+      slotsData.value.calendarId,
+      selectedSlot.value,
+      slotsData.value.user.name || slotsData.value.user.email || "Cliente",
+      slotsData.value.user.email || "",
+      description.value,
+      slotsData.value.accessToken,
+    );
+
+    bookingResult.value = result;
+    isBooking.value = false;
+
+    if (result.success) {
+      selectedSlot.value = null;
+      description.value = "";
+    }
+  });
 
   return (
     <div class="mx-auto max-w-4xl p-4">
-      <h1 class="mb-6 text-2xl font-bold">
-        Reservar Turno con <span class="text-blue-600">{loc.params.id}</span>
-      </h1>
+      <h1 class="mb-2 text-2xl font-bold">Reservar Cita</h1>
+      <p class="mb-6 text-gray-600 dark:text-gray-400">
+        Selecciona un horario disponible para agendar tu cita
+      </p>
 
-      {eventsSignal.value.error && (
+      {slotsData.value.error && (
         <div class="mb-4 rounded border border-red-400 bg-red-100 px-4 py-3 text-red-700">
-          {eventsSignal.value.error}
+          {slotsData.value.error}
         </div>
       )}
 
-      <div class="grid grid-cols-1 gap-8 md:grid-cols-2">
-        <div>
-          <h2 class="mb-4 text-xl font-semibold">
-            Agenda del Profesional (Ocupado)
-          </h2>
-          <div class="overflow-hidden rounded-lg bg-white shadow">
-            <ul class="max-h-[500px] divide-y divide-gray-200 overflow-y-auto">
-              {eventsSignal.value.events.map((event: any) => (
-                <li key={event.id} class="p-4 hover:bg-gray-50">
-                  <div class="font-medium text-gray-900">
-                    {event.summary || "Ocupado"}
-                  </div>
-                  <div class="text-sm text-gray-500">
-                    {new Date(
-                      event.start.dateTime || event.start.date,
-                    ).toLocaleString()}{" "}
-                    -
-                    {new Date(
-                      event.end.dateTime || event.end.date,
-                    ).toLocaleString()}
-                  </div>
-                </li>
-              ))}
-              {eventsSignal.value.events.length === 0 && (
-                <li class="p-4 text-gray-500">
-                  No hay eventos próximos visibles.
-                </li>
-              )}
-            </ul>
-          </div>
+      {bookingResult.value && (
+        <div
+          class={`mb-4 rounded p-4 ${
+            bookingResult.value.success
+              ? "border border-green-400 bg-green-100 text-green-700"
+              : "border border-red-400 bg-red-100 text-red-700"
+          }`}
+        >
+          {bookingResult.value.success && <span class="mr-2 text-xl">✅</span>}
+          {bookingResult.value.message}
         </div>
+      )}
 
-        <div>
-          <h2 class="mb-4 text-xl font-semibold">Solicitar Turno</h2>
-          <Form
-            action={bookAction}
-            class="space-y-4 rounded-lg bg-white p-6 shadow"
-          >
-            <div>
-              <label class="mb-1 block text-sm font-medium text-gray-700">
-                Motivo de la consulta
-              </label>
-              <input
-                name="summary"
-                type="text"
-                required
-                class="w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:ring-blue-500"
-                placeholder="Ej: Consulta general"
-              />
+      {!slotsData.value.user && (
+        <div class="mb-6 rounded border border-yellow-400 bg-yellow-50 px-4 py-3 text-yellow-700">
+          <strong>⚠️ Importante:</strong> Debes iniciar sesión para poder
+          reservar una cita.
+        </div>
+      )}
+
+      <div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        {/* Columna de slots disponibles */}
+        <div class="lg:col-span-2">
+          <h2 class="mb-4 text-lg font-semibold">
+            Horarios Disponibles ({availableSlots.length})
+          </h2>
+
+          {availableSlots.length === 0 ? (
+            <div class="rounded-lg border border-dashed py-8 text-center text-gray-500">
+              <p class="mb-2 text-4xl">📅</p>
+              <p>No hay horarios disponibles en las próximas 2 semanas</p>
             </div>
-            <div>
-              <label class="mb-1 block text-sm font-medium text-gray-700">
-                Inicio
-              </label>
-              <input
-                name="start"
-                type="datetime-local"
-                required
-                class="w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label class="mb-1 block text-sm font-medium text-gray-700">
-                Fin
-              </label>
-              <input
-                name="end"
-                type="datetime-local"
-                required
-                class="w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-            <button
-              type="submit"
-              class="w-full rounded-md bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
-            >
-              Enviar Solicitud
-            </button>
-          </Form>
-          {bookAction.value?.message && (
-            <div
-              class={`mt-4 rounded p-3 ${bookAction.value.success ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
-            >
-              {bookAction.value.message}
+          ) : (
+            <div class="space-y-6">
+              {Array.from(slotsByDay.entries()).map(([dateKey, daySlots]) => (
+                <div key={dateKey}>
+                  <h3 class="mb-2 font-medium text-gray-700 capitalize dark:text-gray-300">
+                    📅 {dateKey}
+                  </h3>
+                  <div class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+                    {daySlots.map((slot) => {
+                      const time = new Date(slot.startTime).toLocaleTimeString(
+                        "es-ES",
+                        {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        },
+                      );
+                      const isSelected =
+                        selectedSlot.value?.startTime === slot.startTime;
+
+                      return (
+                        <button
+                          key={slot.startTime}
+                          class={`rounded-lg p-2 text-sm font-medium transition-all ${
+                            isSelected
+                              ? "bg-blue-500 text-white ring-2 ring-blue-300"
+                              : "bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/50"
+                          }`}
+                          onClick$={() => {
+                            selectedSlot.value = slot;
+                            bookingResult.value = null;
+                          }}
+                        >
+                          {time}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
+        </div>
+
+        {/* Panel de reserva */}
+        <div class="lg:col-span-1">
+          <div class="sticky top-4 rounded-lg border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+            <h2 class="mb-4 text-lg font-semibold">Tu Reserva</h2>
+
+            {selectedSlot.value ? (
+              <div class="space-y-4">
+                <div class="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
+                  <p class="text-sm text-gray-600 dark:text-gray-400">
+                    Fecha y hora seleccionada:
+                  </p>
+                  <p class="font-medium text-blue-700 dark:text-blue-300">
+                    {new Date(selectedSlot.value.startTime).toLocaleDateString(
+                      "es-ES",
+                      {
+                        weekday: "long",
+                        day: "numeric",
+                        month: "long",
+                      },
+                    )}
+                  </p>
+                  <p class="text-lg font-bold text-blue-600">
+                    {new Date(selectedSlot.value.startTime).toLocaleTimeString(
+                      "es-ES",
+                      {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      },
+                    )}{" "}
+                    -{" "}
+                    {new Date(selectedSlot.value.endTime).toLocaleTimeString(
+                      "es-ES",
+                      {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      },
+                    )}
+                  </p>
+                </div>
+
+                {slotsData.value.user && (
+                  <div class="text-sm">
+                    <p class="text-gray-600 dark:text-gray-400">
+                      Reservando como:
+                    </p>
+                    <p class="font-medium">
+                      {slotsData.value.user.name || slotsData.value.user.email}
+                    </p>
+                  </div>
+                )}
+
+                <div>
+                  <label class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Motivo de la cita (opcional)
+                  </label>
+                  <textarea
+                    class="w-full rounded-md border border-gray-300 p-2 text-sm dark:border-gray-600 dark:bg-gray-700"
+                    rows={3}
+                    placeholder="Describe brevemente el motivo de tu cita..."
+                    value={description.value}
+                    onInput$={(e) => {
+                      description.value = (
+                        e.target as HTMLTextAreaElement
+                      ).value;
+                    }}
+                  />
+                </div>
+
+                <Button
+                  look="primary"
+                  class="w-full"
+                  onClick$={handleBookAppointment}
+                  disabled={isBooking.value || !slotsData.value.user}
+                >
+                  {isBooking.value ? "Reservando..." : "Confirmar Reserva"}
+                </Button>
+
+                <button
+                  class="w-full text-sm text-gray-500 hover:text-gray-700"
+                  onClick$={() => {
+                    selectedSlot.value = null;
+                    bookingResult.value = null;
+                  }}
+                >
+                  Cancelar selección
+                </button>
+              </div>
+            ) : (
+              <div class="py-8 text-center text-gray-500">
+                <p class="mb-2 text-4xl">👆</p>
+                <p>Selecciona un horario disponible para continuar</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

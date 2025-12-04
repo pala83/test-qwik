@@ -12,7 +12,7 @@ export const { onRequest, useSession, useSignIn, useSignOut } = QwikAuth$(
         authorization: {
           params: {
             scope:
-              "openid email profile https://www.googleapis.com/auth/calendar.events",
+              "openid email profile https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events",
             prompt: "consent",
             access_type: "offline",
             response_type: "code",

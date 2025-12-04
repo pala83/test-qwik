@@ -16,9 +16,9 @@ export default component$(() => {
 
   return (
     <>
-      <div class="flex flex-wrap justify-start gap-4 p-10">
-        <span class="text-lg font-bold">Buscador simple</span>
-        <div class="flex w-full max-w-sm items-center space-x-2">
+      <div class="flex flex-col justify-start gap-4 p-10">
+        <h1 class="text-lg font-bold">Email del profesional</h1>
+        <div class="flex items-center space-x-2">
           <Input
             id="search"
             class="rounded-l-sm"

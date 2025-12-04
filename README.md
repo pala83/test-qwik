@@ -10,9 +10,9 @@
 
 ## Project Structure
 
-This project is using Qwik with [QwikCity](https://qwik.dev/qwikcity/overview/). QwikCity is just an extra set of tools on top of Qwik to make it easier to build a full site, including directory-based routing, layouts, and more.
+Este proyecto usa **Qwik** con [QwikCity](https://qwik.dev/docs/qwikcity/). **QwikCity** es simplemente un conjunto adicional de herramientas sobre **Qwik** para facilitar la creación de un sitio completo, incluyendo enrutamiento basado en directorios, layouts y más.
 
-Inside your project, you'll see the following directory structure:
+Estructura de carpetas basica:
 
 ```
 ├── public/
@@ -24,15 +24,17 @@ Inside your project, you'll see the following directory structure:
         └── ...
 ```
 
-- `src/routes`: Provides the directory-based routing, which can include a hierarchy of `layout.tsx` layout files, and an `index.tsx` file as the page. Additionally, `index.ts` files are endpoints. Please see the [routing docs](https://qwik.dev/qwikcity/routing/overview/) for more info.
+- `src/routes`: Provides the directory-based routing, which can include a hierarchy of `layout.tsx` layout files, and an `index.tsx` file as the page. Additionally, `index.ts` files are endpoints. Please see the [routing docs](https://qwik.dev/docs/routing/) for more info.
 
 - `src/components`: Recommended directory for components.
 
 - `public`: Any static assets, like images, can be placed in the public directory. Please see the [Vite public directory](https://vitejs.dev/guide/assets.html#the-public-directory) for more info.
 
-## Add Integrations and deployment
+## Add Itegraciones y Despliegue
 
-Use the `bun qwik add` command to add additional integrations. Some examples of integrations includes: Cloudflare, Netlify or Express Server, and the [Static Site Generator (SSG)](https://qwik.dev/qwikcity/guides/static-site-generation/).
+**NPM** es una mierda, aca se usa **Bun** por lo menos para manejo de paquetes, a futuro tambien se utilizara **Bun** como **Runtime Typescript** (si, tiene soporte de Typescript nativo) en el proyecto, pero **Qwik** todavia esta verde en eso y no tengo ganas de renegar.
+
+Usamos la CLI de Qwik y con el comando `bun qwik add` resolvemos integraciones con herramientas utilizadas en el proyecto. Algunos ejemplos de integraciones realizadas: [vercel-edge](https://qwik.dev/docs/deployments/vercel-edge/), [Icons](https://qwik.dev/docs/integrations/icons/), [Tailwindcss](https://qwik.dev/docs/integrations/tailwind/).
 
 ```shell
 bun qwik add # or `bun qwik add`
@@ -62,38 +64,6 @@ The production build will generate client and server modules by running both cli
 
 ```shell
 bun build # or `bun build`
-```
-
-### Mantener estado
-
-`useSignal<tipo de dato primitivo>(instanca inicial)`
-
-- `useSignal();`: mantiene una signal del estado de un dato `promitivo`
-- `useStore();`: lo mismo que el `useSignal();` pero para `objetos` o datos complejos
-
-### Serializacion de funciones en componentes
-
-`const foo = $((value: type, ...)=> {})`
-
-- Es necesario serializar las funciones para aprobechar el poder de `resumability`
-- Al intentar llamar a una funcion mediante un evento se solicitara `serializar` la funcion para poder cargar eljavascript bajo demanda.
-
-### Comunicacion entre componentes
-
-Altamente recomendado definir una interfaz con la estructura de las props recibidas, aprobecha el `Typescript`
-
-```ts
-interface Props {
-    value: type;
-    ...
-}
-```
-
-```ts
-export const Component = component$((props: Props) => {
-    ...
-    return <p atr={props.value}></p>
-});
 ```
 
 ## Vercel Edge
